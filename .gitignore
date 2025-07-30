@@ -1,1 +1,15 @@
+# Ignore virtual environments
+backend/venv/
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.sqlite3
+*.db
+
+# VSCode
+.vscode/
 
