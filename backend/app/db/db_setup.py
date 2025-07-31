@@ -2,7 +2,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 #SQLite for now; might swap later with postgreSQL
-SQLALCHEMY_DATABASE_URL = "sqlite://./finance.db"
+SQLALCHEMY_DATABASE_URL = "sqlite:///./finance.db"
 
 #SQLAlchemy egine connects python to the DB
 engine = create_engine(
