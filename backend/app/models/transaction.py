@@ -3,7 +3,7 @@ from sqlalchemy.sql import func
 from app.db.db_setup import base
 
 class Transaction(base):
-    __tablename__ = "transactions"
+    __tablename__ = "Transactions"
 
     id = Column(Integer, primary_key=True, index=True)
     amount = Column(Float, nullable=False)
