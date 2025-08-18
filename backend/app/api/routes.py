@@ -1,14 +1,14 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-#importing database session and models/schemas
+# importing database session and models/schemas
 from app.db.db_setup import SessionLocal
 from app.models.transaction import Transaction
 from app.schemas.transaction import TransactionCreate, TransactionOut
 
 router = APIRouter()
 
-#gets a database session for each request
+# gets a database session for each request
 def get_db():
     db = SessionLocal()
     try:
@@ -22,7 +22,7 @@ def create_transaction(
     transaction: TransactionCreate, #incoming request body
     db: Session = Depends(get_db)   #get the database session
 ):  
-    #creates a new transaction model instance
+    # creates a new transaction model instance
     new_transaction = Transaction(
         amount = transaction.amount,
         category=transaction.category
@@ -35,4 +35,13 @@ def create_transaction(
 
     # Return the newly created transaction (coverted using schema)
     return new_transaction
+
+# GET route to return all transactions from the database
+@router.get("/transactions", response_model=list[TransactionOut])
+def get_transactions(db: Session = Depends(get_db)):
+    # Query the database to get all transaction rows
+    transactions = db.query(Transaction).all()
+
+    # Return the full list of transactions
+    return transactions
 

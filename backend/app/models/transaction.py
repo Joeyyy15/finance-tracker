@@ -1,8 +1,8 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime
 from sqlalchemy.sql import func
-from app.db.db_setup import base
+from app.db.db_setup import Base
 
-class Transaction(base):
+class Transaction(Base):
     __tablename__ = "Transactions"
 
     id = Column(Integer, primary_key=True, index=True)
