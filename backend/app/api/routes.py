@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 
 # importing database session and models/schemas
 from app.db.db_setup import SessionLocal
-from app.models.transaction import Transaction
-from app.schemas.transaction import TransactionCreate, TransactionOut
+from app.models.transaction import Transaction, Category
+from app.schemas.transaction import TransactionCreate, TransactionOut, CategoryCreate, CategoryOut 
 
 router = APIRouter()
 
@@ -25,7 +25,7 @@ def create_transaction(
     # creates a new transaction model instance
     new_transaction = Transaction(
         amount = transaction.amount,
-        category=transaction.category
+        category_id=transaction.category_id
     )
 
     # Add it to the database
@@ -44,4 +44,16 @@ def get_transactions(db: Session = Depends(get_db)):
 
     # Return the full list of transactions
     return transactions
+# POST route to create categories
+@router.post("/categories", response_model = CategoryOut)
+def create_category(category: CategoryCreate, db: Session = Depends(get_db)):
+    db_category = Category(name=category.name)
+    db.add(db_category)
+    db.commit()
+    db.refresh(db_category)
+    return db_category
 
+# GET route to retrieve categories
+@router.get("/categories", response_model=list[CategoryOut])
+def get_categories(db: Session = Depends(get_db)):
+    return db.query(Category).all()
