@@ -1,13 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 # importing database session and models/schemas
 from app.db.db_setup import SessionLocal
-from app.models.transaction import Transaction, Category
+from app.models.transaction import Transaction, Category, Goal
 from app.schemas.transaction import (
     TransactionCreate, TransactionOut,
     CategoryCreate, CategoryOut,
-    TransactionUpdate,  
+    TransactionUpdate, CategoryTotal,
+    GoalCreate, GoalUpdate, GoalOut
 )
 
 
@@ -50,6 +52,7 @@ def get_transactions(db: Session = Depends(get_db)):
     # Return the full list of transactions
     return transactions
 
+# updates transactions
 @router.put("/transactions/{tx_id}", response_model=TransactionOut)
 def update_transaction(tx_id: int, payload: TransactionUpdate, db: Session = Depends(get_db)):
     #update an existing transaction.
@@ -70,6 +73,7 @@ def update_transaction(tx_id: int, payload: TransactionUpdate, db: Session = Dep
     db.refresh(tx)
     return tx
 
+# deletes transactions
 @router.delete("/transactions/{tx_id}")
 def delete_transaction(tx_id: int, db: Session = Depends(get_db)):
     # Deletes transaction by ID
@@ -80,6 +84,7 @@ def delete_transaction(tx_id: int, db: Session = Depends(get_db)):
     db.delete(tx)
     db.commit()
     return {"message": f"Transaction {tx_id} deleted."}
+
 # POST route to create categories
 @router.post("/categories", response_model = CategoryOut)
 def create_category(category: CategoryCreate, db: Session = Depends(get_db)):
@@ -93,3 +98,54 @@ def create_category(category: CategoryCreate, db: Session = Depends(get_db)):
 @router.get("/categories", response_model=list[CategoryOut])
 def get_categories(db: Session = Depends(get_db)):
     return db.query(Category).all()
+
+# returns summaries of total spending depending on category
+@router.get("/reports/totals", response_model=list[CategoryTotal])
+def get_totals_by_category(db: Session = Depends(get_db)):
+    results = (
+        db.query(Category.name, func.sum(Transaction.amount).label("total"))
+        .join(Transaction, Transaction.category_id == Category.id)
+        .group_by(Category.name)
+        .all()
+    )
+    return [{"category": name, "total": total} for name, total in results]
+
+# goals for user
+#creates the weekly spending goal for a category
+@router.post("/goals", response_model=GoalOut)
+def create_goal(payload: GoalCreate, db: Session = Depends(get_db)):
+    category = db.query(Category).filter(Category.id == payload.category_id).first()
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found.")
+    
+    #one goal per category
+    existing = db.query(Goal).filter(Goal.category_id == payload.category_id).first()
+    if existing:
+        raise HTTPException (status_code=400, detail="Goal already created for this category.")
+    
+    goal = Goal(category_id=payload.category_id, weekly_budget=payload.weekly_budget)
+
+    db.add(goal)
+    db.commit()
+    db.refresh(goal)
+    return goal
+
+#lists all goals with their linked categories
+@router.get("/goals", response_model=list[GoalOut])
+def list_goals(db: Session = Depends(get_db)):
+    return db.query(Goal).all()
+
+#update an existing goals weekly_budget.
+@router.put("/goals/{goal_id}", response_model=GoalOut)
+def update_goal(goal_id: int, payload: GoalUpdate, db: Session = Depends(get_db)):
+    goal = db.query(Goal).filter(Goal.id == goal_id).first()
+    if not goal:
+        raise HTTPException(status_code=404, detail="Goal not found.")
+    
+    if payload.weekly_budget is not None:
+        goal.weekly_budget = payload.weekly_budget
+    
+    db.commit()
+    db.refresh(goal)
+    return goal
+
