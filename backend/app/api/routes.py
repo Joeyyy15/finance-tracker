@@ -1,10 +1,15 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 # importing database session and models/schemas
 from app.db.db_setup import SessionLocal
 from app.models.transaction import Transaction, Category
-from app.schemas.transaction import TransactionCreate, TransactionOut, CategoryCreate, CategoryOut 
+from app.schemas.transaction import (
+    TransactionCreate, TransactionOut,
+    CategoryCreate, CategoryOut,
+    TransactionUpdate,  
+)
+
 
 router = APIRouter()
 
@@ -44,6 +49,37 @@ def get_transactions(db: Session = Depends(get_db)):
 
     # Return the full list of transactions
     return transactions
+
+@router.put("/transactions/{tx_id}", response_model=TransactionOut)
+def update_transaction(tx_id: int, payload: TransactionUpdate, db: Session = Depends(get_db)):
+    #update an existing transaction.
+    tx = db.query(Transaction).filter(Transaction.id == tx_id).first()
+    if not tx:
+        raise HTTPException(status_code=404, detail="Transaction not found.")
+    
+    if payload.amount is not None:
+        tx.amount = payload.amount
+    
+    if payload.category_id is not None:
+        # validates that new category exists
+        category = db.query(Category).filter(Category.id == payload.category_id).first()
+        if not category:
+            raise HTTPException(status_code=404, detail="Category not fouhnd.")
+        tx.category_id = payload.category_id
+    db.commit()
+    db.refresh(tx)
+    return tx
+
+@router.delete("/transactions/{tx_id}")
+def delete_transaction(tx_id: int, db: Session = Depends(get_db)):
+    # Deletes transaction by ID
+    tx = db.query(Transaction).filter(Transaction.id == tx_id).first()
+    if not tx:
+        raise HTTPException(status_code = 404, detail="Transaction not found.")
+    
+    db.delete(tx)
+    db.commit()
+    return {"message": f"Transaction {tx_id} deleted."}
 # POST route to create categories
 @router.post("/categories", response_model = CategoryOut)
 def create_category(category: CategoryCreate, db: Session = Depends(get_db)):

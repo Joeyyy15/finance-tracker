@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
+from typing import Optional
 
 class CategoryBase(BaseModel):
     name: str
@@ -28,3 +29,7 @@ class TransactionOut(TransactionBase):
     class Config:
         from_attributes = True
         
+class TransactionUpdate(BaseModel):
+    # made optional so you can update one or both
+    amount: Optional[float] = None
+    category_id: Optional[int] = None
