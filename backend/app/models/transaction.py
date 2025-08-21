@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Date, Numeric
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Date, Numeric, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.db_setup import Base
@@ -22,8 +22,10 @@ class Transaction(Base):
     category_id = Column(Integer, ForeignKey("categories.id"))
     category = relationship("Category", back_populates="transactions")
     date = Column(DateTime(timezone=True), server_default=func.now())
-
+# index to speed up (category_id/date) filters
+Index("ix_transactions_category_date", Transaction.category_id, Transaction.date)
 #weekly budget goals for user
+
 class Goal(Base):
     __tablename__ = "goals"
 

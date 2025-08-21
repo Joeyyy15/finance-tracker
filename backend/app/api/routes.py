@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from datetime import date
+from datetime import date, timedelta, datetime, timezone
+from decimal import Decimal
 
 # importing database session and models/schemas
 from app.db.db_setup import SessionLocal
@@ -10,7 +11,7 @@ from app.schemas.transaction import (
     TransactionCreate, TransactionOut,
     CategoryCreate, CategoryOut,
     TransactionUpdate, CategoryTotal,
-    GoalCreate, GoalUpdate, GoalOut
+    GoalCreate, GoalUpdate, GoalOut, GoalProgress
 )
 
 
@@ -77,7 +78,7 @@ def update_transaction(tx_id: int, payload: TransactionUpdate, db: Session = Dep
             raise HTTPException(status_code=404, detail="Category not found.")
         tx.category_id = payload.category_id
     
-    
+
     db.commit()
     db.refresh(tx)
     return tx
@@ -97,6 +98,9 @@ def delete_transaction(tx_id: int, db: Session = Depends(get_db)):
 # POST route to create categories
 @router.post("/categories", response_model = CategoryOut)
 def create_category(category: CategoryCreate, db: Session = Depends(get_db)):
+    existing = db.query(Category).filter(Category.name == category.name).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Category already created")
     db_category = Category(name=category.name)
     db.add(db_category)
     db.commit()
@@ -110,14 +114,31 @@ def get_categories(db: Session = Depends(get_db)):
 
 # returns summaries of total spending depending on category
 @router.get("/reports/totals", response_model=list[CategoryTotal])
-def get_totals_by_category(db: Session = Depends(get_db)):
-    results = (
-        db.query(Category.name, func.sum(Transaction.amount).label("total"))
+def get_totals_by_category(
+    start: datetime | None = Query(None),
+    end: datetime | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    q = (
+        db.query(
+            Category.name.label("category"),
+            func.sum(Transaction.amount).label("total"),
+        )
         .join(Transaction, Transaction.category_id == Category.id)
         .group_by(Category.name)
-        .all()
+        .order_by(Category.name.asc())
     )
-    return [{"category": name, "total": total} for name, total in results]
+
+    if start:
+        q = q.filter(Transaction.date >= start)
+    if end:
+        q = q.filter(Transaction.date <= end)
+    
+    results = q.all()
+    return [
+        {"category": name, "total": Decimal(str(total or 0))}
+        for name, total in results
+    ]
 
 # goals for user
 #creates the weekly spending goal for a category
@@ -158,3 +179,59 @@ def update_goal(goal_id: int, payload: GoalUpdate, db: Session = Depends(get_db)
     db.refresh(goal)
     return goal
 
+#setting up goal bars with colors showing when user is getting close to their spending goal
+@router.get("/goals/progress", response_model=list[GoalProgress])
+def goal_progress(
+    start: datetime | None = Query(None),
+    end: datetime | None = Query(None),
+    db: Session = Depends(get_db)
+):
+
+    #defaults user to current week if no time is set for goal
+    if not start or not end:
+        today = datetime.now(timezone.utc).date()
+        monday = today - timedelta(days=today.weekday())
+        sunday = monday + timedelta(days=6)
+        start = datetime.combine(monday, datetime.min.time(), tzinfo=timezone.utc)
+        end = datetime.combine(sunday, datetime.max.time(), tzinfo=timezone.utc)
+
+    #Joing goals to categories, left join transactions in range
+    rows = (
+        db.query(
+            Goal.category_id.label("category_id"),
+            Category.name.label("category_name"),
+            Goal.weekly_budget.label("weekly_budget"),
+            func.coalesce(func.sum(Transaction.amount),0).label("spent"),
+        )
+        .join(Category, Category.id == Goal.category_id)
+        .outerjoin(
+            Transaction,
+            (Transaction.category_id == Goal.category_id)&
+            (Transaction.date >= start) & 
+            (Transaction.date <= end)
+        )
+        .group_by(Goal.category_id, Category.name, Goal.weekly_budget)
+        .order_by(Category.name.asc())
+        .all()
+    )
+
+    result = []
+    for category_id, category_name, weekly_budget, spent in rows:
+        spent = Decimal(str(spent or 0))
+        budget = Decimal(str(weekly_budget))
+        pct = (spent / budget * Decimal("100")) if budget > 0 else Decimal("0")
+        if pct < 70:
+            status = "green"
+        elif pct <= 100:
+            status = "yellow"
+        else:
+            status = "red"
+        result.append({
+            "category_id": category_id,
+            "category_name": category_name,
+            "spent": spent,
+            "weekly_budget": budget,
+            "pct_used": pct.quantize(Decimal("0.01")),
+            "status": status,
+        })
+    return result

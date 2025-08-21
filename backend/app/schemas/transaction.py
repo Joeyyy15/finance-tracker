@@ -55,3 +55,10 @@ class GoalOut(BaseModel):
     class Config:
         from_attributes = True
         
+class GoalProgress(BaseModel):
+    category_id: int
+    category_name:str
+    spent: Decimal
+    weekly_budget: Decimal
+    pct_used: Decimal
+    status: str
