@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
+from decimal import Decimal
 
 class CategoryBase(BaseModel):
     name: str
@@ -15,10 +16,10 @@ class CategoryOut(CategoryBase):
         from_attributes = True
 
 class TransactionBase(BaseModel):
-    amount: float
+    amount: Decimal
 
 class TransactionCreate(BaseModel):
-    amount: float
+    amount: Decimal
     category_id: int
 
 class TransactionOut(TransactionBase):
@@ -31,24 +32,24 @@ class TransactionOut(TransactionBase):
         
 class TransactionUpdate(BaseModel):
     # made optional so you can update one or both
-    amount: Optional[float] = None
+    amount: Optional[Decimal] = None
     category_id: Optional[int] = None
 
 class CategoryTotal(BaseModel):
     category:str
-    total: float
+    total: Decimal
 
 class GoalCreate(BaseModel):
     category_id: int
-    weekly_budget: float
+    weekly_budget: Decimal
 
 class GoalUpdate(BaseModel):
-    weekly_budget: Optional[float] = None
+    weekly_budget: Optional[Decimal] = None
 
 # what the API returns after creating/listing/updating a goal
 class GoalOut(BaseModel):
     id: int
-    weekly_budget: float
+    weekly_budget: Decimal
     category:CategoryOut
 
     class Config:
