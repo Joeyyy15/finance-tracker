@@ -1,8 +1,9 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Date, Numeric
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.db_setup import Base
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
+
 
 class Category(Base):
     __tablename__ = "categories"
@@ -14,10 +15,10 @@ class Category(Base):
 
 
 class Transaction(Base):
-    __tablename__ = "Transactions"
+    __tablename__ = "transactions"
 
     id = Column(Integer, primary_key=True, index=True)
-    amount = Column(Float, nullable=False)
+    amount = Column(Numeric(12,2), nullable=False)
     category_id = Column(Integer, ForeignKey("categories.id"))
     category = relationship("Category", back_populates="transactions")
     date = Column(DateTime(timezone=True), server_default=func.now())
@@ -33,7 +34,7 @@ class Goal(Base):
     category_id = Column(Integer, ForeignKey("categories.id", ondelete="CASCADE"), nullable=False, unique=True, index = True)
 
     #Dollar amount allowed per week
-    weekly_budget = Column(Float, nullable=False)
+    weekly_budget = Column(Numeric(12,2), nullable=False)
 
     #when goal was created
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

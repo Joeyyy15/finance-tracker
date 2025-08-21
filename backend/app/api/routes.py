@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+from datetime import date
 
 # importing database session and models/schemas
 from app.db.db_setup import SessionLocal
@@ -29,6 +30,12 @@ def create_transaction(
     transaction: TransactionCreate, #incoming request body
     db: Session = Depends(get_db)   #get the database session
 ):  
+    
+    category = db.query(Category).filter(Category.id == transaction.category_id).first()
+    if not category:
+        raise HTTPException(status_code=400, detail="Category does not exist.")
+
+    tx_date = getattr(transaction, "date", None) or date.today()
     # creates a new transaction model instance
     new_transaction = Transaction(
         amount = transaction.amount,
@@ -67,8 +74,10 @@ def update_transaction(tx_id: int, payload: TransactionUpdate, db: Session = Dep
         # validates that new category exists
         category = db.query(Category).filter(Category.id == payload.category_id).first()
         if not category:
-            raise HTTPException(status_code=404, detail="Category not fouhnd.")
+            raise HTTPException(status_code=404, detail="Category not found.")
         tx.category_id = payload.category_id
+    
+    
     db.commit()
     db.refresh(tx)
     return tx
