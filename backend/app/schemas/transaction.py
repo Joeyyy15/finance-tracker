@@ -59,5 +59,8 @@ class GoalProgress(BaseModel):
     pct_used: Decimal
     status: str
 
+class Monthlytotal(BaseModel):
+    month: str
+    total: Decimal
 
 

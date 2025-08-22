@@ -11,7 +11,7 @@ from app.schemas.transaction import (
     TransactionCreate, TransactionOut,
     CategoryCreate, CategoryOut,
     TransactionUpdate, CategoryTotal,
-    GoalCreate, GoalUpdate, GoalOut, GoalProgress
+    GoalCreate, GoalUpdate, GoalOut, GoalProgress, Monthlytotal
 )
 
 
@@ -235,3 +235,27 @@ def goal_progress(
             "status": status,
         })
     return result
+
+@ router.get("/reports/monthly", response_model=list[Monthlytotal])
+def get_monthly_totals(
+    start: datetime | None = Query(None, description="Start datetie"),
+    end: datetime | None = Query(None, description="End datetime"),
+    db : Session = Depends(get_db)
+):
+    
+    month_expr = func.strftime("%y-%m", Transaction.date) # SQLite monthly key
+
+    q = (
+        db.query(
+            month_expr.label("month"),
+            func.sum(Transaction.amount).label("total"),
+        )
+    )
+    if start:
+        q = q.filter(Transaction.date >= start)
+    if end: 
+        q = q.filter(Transaction.date <= end)
+    
+    rows = q.group_by("month").order_by("month").all()
+
+    return [{"month": m, "total": Decimal(str(t or 0))} for m, t in rows]
