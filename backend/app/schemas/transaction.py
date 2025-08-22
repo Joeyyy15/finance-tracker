@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import Optional
 from decimal import Decimal
@@ -11,9 +11,7 @@ class CategoryCreate(CategoryBase):
 
 class CategoryOut(CategoryBase):
     id:int
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class TransactionBase(BaseModel):
     amount: Decimal
@@ -26,9 +24,7 @@ class TransactionOut(TransactionBase):
     id: int
     date: datetime
     category: CategoryOut
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
         
 class TransactionUpdate(BaseModel):
     # made optional so you can update one or both
@@ -51,9 +47,7 @@ class GoalOut(BaseModel):
     id: int
     weekly_budget: Decimal
     category:CategoryOut
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
         
 class GoalProgress(BaseModel):
     category_id: int
@@ -62,3 +56,6 @@ class GoalProgress(BaseModel):
     weekly_budget: Decimal
     pct_used: Decimal
     status: str
+
+
+
