@@ -1,15 +1,22 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Date, Numeric, Index
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Date, Numeric, Index, Enum, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.db_setup import Base
 from datetime import datetime, timezone, date
+import enum
 
+class CategoryType(enum.Enum):
+    income = "income"
+    expense = "expense"
 
 class Category(Base):
     __tablename__ = "categories"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
 
+    #income/expense
+    type = Column(Enum(CategoryType), nullable=False, index=True)
+    
     transactions = relationship("Transaction", back_populates="category")
 
 

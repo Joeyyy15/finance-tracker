@@ -2,9 +2,11 @@ from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import Optional
 from decimal import Decimal
+from typing import Literal
 
 class CategoryBase(BaseModel):
     name: str
+    type: Literal["income", "expense"]
 
 class CategoryCreate(CategoryBase):
     pass 

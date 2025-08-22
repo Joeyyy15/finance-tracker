@@ -101,7 +101,7 @@ def create_category(category: CategoryCreate, db: Session = Depends(get_db)):
     existing = db.query(Category).filter(Category.name == category.name).first()
     if existing:
         raise HTTPException(status_code=409, detail="Category already created")
-    db_category = Category(name=category.name)
+    db_category = Category(name=category.name, type=category.type)
     db.add(db_category)
     db.commit()
     db.refresh(db_category)
